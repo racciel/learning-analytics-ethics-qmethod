@@ -42,4 +42,4 @@ os.makedirs(outDir, exist_ok=True)
 
 getGoogleSheet(spreadsheet_id, outDir, outFile, exclude_columns)
 
-sys.exit(0)  # Success
+sys.exit(0)
