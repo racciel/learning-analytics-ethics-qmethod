@@ -12,7 +12,6 @@ def getGoogleSheet(spreadsheet_id, outDir, outFile, exclude_columns=None):
         raw_csv = response.content.decode('utf-8')
         
         if exclude_columns:
-           
             input_csv = StringIO(raw_csv)
             reader = csv.DictReader(input_csv)
             
@@ -29,6 +28,7 @@ def getGoogleSheet(spreadsheet_id, outDir, outFile, exclude_columns=None):
                 f.write(raw_csv)
         
         print('Cleaned CSV file saved to: {}'.format(filepath))
+        
     else:
         print(f'Error downloading Google Sheet: {response.status_code}')
         sys.exit(1)
@@ -42,4 +42,4 @@ os.makedirs(outDir, exist_ok=True)
 
 getGoogleSheet(spreadsheet_id, outDir, outFile, exclude_columns)
 
-sys.exit(0)
+#sys.exit(0)
