@@ -1,12 +1,3 @@
----
-title: "MiPro paper data analysis"
-author: "racciel"
-date: "March 1, 2025"
-output: 
-  html_document:
-    keep_md: true
----
-
 INSTALACIJE PAKETA
 ```{r}
 # !!! INSTALACIJE PAKETA !!!
