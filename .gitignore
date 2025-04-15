@@ -3,3 +3,7 @@
 .RData
 .Ruserdata
 miprovenv
+graf*
+.env
+main.R
+data/*

@@ -1,0 +1,574 @@
+INSTALACIJE PAKETA
+```{r}
+# !!! INSTALACIJE PAKETA !!!
+install.packages("reticulate")
+install.packages("qmethod")
+install.packages("ggplot2")
+install.packages("rlang")
+install.packages("tidyverse")
+```
+
+PREUZIMANJE CSV DATOTEKE POMOĆU PYTHONA
+```{r}
+# !!! PREUZIMANJE CSV DATOTEKE POMOĆU PYTHONA !!!
+library(reticulate)
+use_virtualenv("./miprovenv")
+py_run_file("python.py")
+```
+
+UČITAVANJE PODATAKA
+```{r}
+# !!! UČITAVANJE PODATAKA !!!
+podatci <- read.csv("./data/answers.csv")
+length(podatci[,1])
+```
+
+MANIPULACIJA PODATAKA
+```{r}
+# !!! MANIPULACIJA PODATAKA !!!
+podatci[6][podatci[6] == "informacijske znanosti"] <- "Društvene znanosti"
+
+demografski <- podatci[2:6]
+vlasnistvo <- podatci[7:11]
+privatnost <- podatci[12:16]
+transparentnost <- podatci[17:21]
+analitika <- podatci[22:26]
+koristenje <- podatci[27:31]
+
+```
+
+OPISNA STATISTIKA
+```{r}
+# !!! OPISNA STATISTIKA !!!
+
+library("ggplot2")
+ggplot(demografski, aes(x = Starost..u.godinama.)) +
+  geom_bar(fill = "purple") +
+  geom_text(stat = "count", aes(label = ..count..),vjust=-1, hjust = 0.3, size = 3) + 
+  labs(title = "Distribucija ispitanika prema dobnim skupinama", x = "Dobne skupine", y = "Broj ispitanika") +
+  theme_minimal()
+
+spolni_identitet <- demografski$Spolni.identitet
+spolni_identitet[spolni_identitet != "Muško" & spolni_identitet != "Žensko" & spolni_identitet != "Ne želim se izjasniti"] <- "Ostalo"
+
+ggplot(demografski, aes(x = "", fill = spolni_identitet)) +
+  geom_bar(width = 1, stat = "count") +
+  coord_polar(theta = "y") +
+  labs(title = "Distribucija prema spolnom identitetu", fill = "Spol") +
+  theme_minimal()
+
+library(tidyverse)
+
+ggplot(demografski, aes(x = fct_rev(fct_infreq(Razina.studija..trenutna..)))) +
+  geom_bar(fill = "orange") +
+  geom_text(stat = "count", aes(label = ..count..), hjust = -0.2, size = 3) +
+  labs(title = "Distribucija prema razini studiranja", x = "Razina studiranja", y = "Broj ispitanika") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme_minimal() +
+  coord_flip()
+
+sveuciliste_long <- demografski %>%
+  separate_rows(Na.kojim.ste.sve.sveučilištima.veleučilištima.studirali., sep = ", ")
+sveucilista <- sveuciliste_long$Na.kojim.ste.sve.sveučilištima.veleučilištima.studirali.
+
+sveucilista[!sveucilista %in% c("Sveučilište u Zagrebu", "Sveučilište u Rijeci", "Sveučilište Sjever", "Sveučilište Jurja Dobrile u Puli", "Sveučilište Josipa Jurja Strossmayera u Osijeku", "Libertas međunarodno sveučilište")] <- "Ostalo"
+
+podrucje_studiranja_long <- demografski %>%
+  separate_rows(Područje.područja.studiranja., sep = ", ")
+podrucja <- podrucje_studiranja_long$Područje.područja.studiranja.
+
+ggplot(, aes(x = fct_rev(fct_infreq(sveucilista)))) +
+  geom_bar(fill = "green") +
+  geom_text(stat = "count", aes(label = ..count..), hjust = -0.2, size = 3) +
+  labs(title = "Distribucija prema sveučilištu", x = "Sveučilište", y = "Broj ispitanika") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme_minimal() +
+  coord_flip()
+
+ggplot(, aes(x = fct_rev(fct_infreq(podrucja)))) +
+  geom_bar(fill = "purple") +
+  geom_text(stat = "count", aes(label = ..count..), hjust = -0.2, size = 3) +
+  labs(title = "Distribucija prema području studiranja", x = "Područje studiranja", y = "Broj ispitanika") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme_minimal() +
+  coord_flip()
+```
+
+FUNKCIJA PRIPREME PODATAKA ZA Q SORT
+```{r}
+# !!! FUNKCIJA PRIPREME PODATAKA ZA Q SORT !!!
+prep <- function(l) {
+  names(l) <- sprintf("st_%d", seq(1, length(names(l))))
+  l <- t(l)
+  colnames(l) <- sprintf("par_%d", seq(1, dim(l)[2]))
+  l <- list(l)
+  l <- l[[1]]
+  return(l)
+}
+```
+
+PRIPREMA PODATAKA I PROVOĐENJE Q METHODA
+```{r}
+# !!! PRIPREMA PODATAKA I PROVOĐENJE Q METHODA!!!
+library(qmethod)
+vlasnistvo <- prep(vlasnistvo)
+privatnost <- prep(privatnost)
+transparentnost <- prep(transparentnost)
+analitika <- prep(analitika)
+koristenje <- prep(koristenje)
+
+# QMETHOD nad zasbnim kategorijama izjava
+r1 <- qmethod(vlasnistvo, 2)
+r2 <- qmethod(privatnost, 2)
+r3 <- qmethod(transparentnost, 2)
+r4 <- qmethod(analitika, 2)
+r5 <- qmethod(koristenje, 2)
+
+summary(r1)
+summary(r2)
+summary(r3)
+summary(r4)
+summary(r5)
+
+r1$loa
+
+loa.and.flags(r1)
+loa.and.flags(r2)
+loa.and.flags(r3)
+loa.and.flags(r4)
+loa.and.flags(r5)
+
+# SVI SORTOVI s 2, 3 i 4 faktora
+all_sorts <- podatci[7:length(podatci)]
+all_sorts <- prep(all_sorts)
+
+q_full_2fact <- qmethod(all_sorts, 2)
+q_full_3fact <- qmethod(all_sorts, 3)
+q_full_4fact <- qmethod(all_sorts, 4)
+q_full_5fact <- qmethod(all_sorts, 5)
+
+summary(q_full_2fact)
+summary(q_full_3fact)
+summary(q_full_4fact)
+summary(q_full_5fact)
+
+loa.and.flags(q_full_2fact)
+loa.and.flags(q_full_3fact)
+loa.and.flags(q_full_4fact)
+loa.and.flags(q_full_5fact)
+
+summary(q_full_2fact)
+factor_scores_2fact <- as.data.frame(q_full_2fact$f_char)
+print(factor_scores_2fact)
+summary(q_full_3fact)
+factor_scores_3fact <- as.data.frame(q_full_3fact$f_char)
+print(factor_scores_3fact)
+summary(q_full_4fact)
+factor_scores_4fact <- as.data.frame(q_full_4fact$f_char)
+print(factor_scores_4fact)
+summary(q_full_5fact)
+factor_scores_5fact <- as.data.frame(q_full_5fact$f_char)
+print(factor_scores_5fact)
+```
+
+```{r}
+# Prosječni rangovi po kategorijama
+prosjeci <- rowMeans(all_sorts)
+
+avg_ranks <- data.frame(
+  Izjava = rownames(all_sorts),
+  Prosjek = prosjeci
+)
+
+str(avg_ranks)
+summary(avg_ranks)
+
+ggplot(avg_ranks, aes(x = reorder(Izjava, Prosjek), y = Prosjek)) +
+  geom_col(fill = "skyblue") +
+  coord_cartesian(ylim = c(2, 5)) +  # Prikazuje samo raspon od 2 do 5
+  geom_text(aes(label = round(Prosjek, 2)), hjust = -0.1, size = 3) +
+  geom_hline(yintercept = 3, lty = 'dashed', color = "red", lwd = 0.6) +
+  coord_flip() +
+  labs(title = "Prosječni rangovi",
+       x = "Izjava", y = "Prosječni rang") +
+  theme_minimal()
+```
+
+
+```{r}
+# Pripadnost faktorima
+tmp <- vlasnistvo
+q_result <- qmethod(tmp, nfactors = 2)  
+
+factor_loadings <- q_result$lo
+print(factor_loadings)  
+
+n_statements <- 5
+
+threshold <- 1.96 / sqrt(n_statements)
+
+strong_associations <- apply(factor_loadings, 2, function(x) sum(abs(x) > threshold))
+print(strong_associations)
+
+for (factor in 1:ncol(factor_loadings)) {
+  cat("\nFactor", factor, ":\n")
+  print(rownames(factor_loadings)[abs(factor_loadings[, factor]) > threshold])
+}
+
+q_result$loa
+
+```
+
+```{r}
+
+# Korelacija i pripadnost faktorima po ispitanicima
+
+cor(all_sorts)
+
+round(r1$loa, digits = 2)
+r1$flag
+r1$f_char$characteristics
+
+round(r2$loa, digits = 2)
+r2$flag
+r2$f_char$characteristics
+
+round(r3$loa, digits = 2)
+r3$flag
+r3$f_char$characteristics
+
+round(r4$loa, digits = 2)
+r4$flag
+r4$f_char$characteristics
+
+round(r5$loa, digits = 2)
+r5$flag
+r5$f_char$characteristics
+
+
+```
+
+```{r}
+
+# Karakteristike faktora
+
+summary(r1)
+r1$f_char
+sum(r1$flagged[,1])
+sum(r1$flagged[,2])
+
+summary(r2)
+r2$f_char
+sum(r2$flagged[,1])
+sum(r2$flagged[,2])
+
+summary(r3)
+r3$f_char
+sum(r3$flagged[,1])
+sum(r3$flagged[,2])
+
+summary(r4)
+r4$f_char
+sum(r4$flagged[,1])
+sum(r4$flagged[,2])
+
+summary(r5)
+r5$f_char
+sum(r5$flagged[,1])
+sum(r5$flagged[,2])
+
+summary(q_full_2fact)
+q_full_2fact$f_char
+sum(q_full_2fact$flagged[,1])
+sum(q_full_2fact$flagged[,2])
+
+
+summary(q_full_3fact)
+q_full_3fact$f_char
+sum(q_full_3fact$flagged[,1])
+sum(q_full_3fact$flagged[,2])
+sum(q_full_3fact$flagged[,3])
+
+summary(q_full_4fact)
+q_full_4fact$f_char
+sum(q_full_4fact$flagged[,1])
+sum(q_full_4fact$flagged[,2])
+sum(q_full_4fact$flagged[,3])
+sum(q_full_4fact$flagged[,4])
+
+summary(q_full_5fact)
+q_full_5fact$f_char
+sum(q_full_5fact$flagged[,1])
+sum(q_full_5fact$flagged[,2])
+sum(q_full_5fact$flagged[,3])
+sum(q_full_5fact$flagged[,4])
+sum(q_full_5fact$flagged[,5])
+
+r1$qdc
+r2$qdc
+r3$qdc
+r4$qdc
+r5$qdc
+
+q_full_2fact$qdc
+q_full_3fact$qdc
+q_full_4fact$qdc
+q_full_5fact$qdc
+
+q_full_2fact$zsc_n
+
+```
+
+TESTOVI
+```{r}
+
+podatci
+
+ispitanici <- as.data.frame(podatci)
+
+
+ispitanici$Spolni.identitet <- spolni_identitet
+
+ispitanici$polje <- "STEM"
+
+stem <- c("Tehničke znanosti", "Biomedicina i zdravstvo", "Prirodne znanosti", "Biotehničke znanosti")
+
+names(ispitanici)
+
+ispitanici$stem_flag <- ifelse(grepl(paste(stem, collapse = "|"), 
+                                     ispitanici$Područje.područja.studiranja., 
+                                     ignore.case = TRUE), 1, 0)
+
+ispitanici$Vremenska.oznaka <- NULL
+
+ispitanici$polje[ispitanici$stem_flag == 1] <- "STEM"
+ispitanici$polje[ispitanici$stem_flag == 0] <- "ne-STEM"
+
+names(ispitanici)
+library(dplyr)
+ispitanici <- ispitanici %>% select(1,2,3,4,5, polje)
+
+names(ispitanici)
+
+ispitanici
+
+factors = apply(q_full_2fact$flagged, 1, function(x) {
+    if (sum(x) == 1) {
+      return(which(x))
+    } else {
+      return(NA)
+    }
+  })
+
+factors[is.na(factors)] <- apply(q_full_2fact$loa, 1, which.max)
+ispitanici$hardfactor <- factors
+
+loadings <- as.data.frame(q_full_2fact$loa)
+
+ispitanici$f1 <- loadings$f1
+ispitanici$f2 <- loadings$f2
+
+ispitanici <- ispitanici[ispitanici$Spolni.identitet != "Ne želim se izjasniti",]
+ispitanici <- ispitanici[ispitanici$Spolni.identitet != "Ostalo",]
+
+names(ispitanici)
+
+
+shapiro.test(ispitanici$f1)
+shapiro.test(ispitanici$f2)
+
+pairwise.wilcox.test(ispitanici$f1, ispitanici$polje, p.adjust.method = "bonferroni")
+pairwise.wilcox.test(ispitanici$f2, ispitanici$polje, p.adjust.method = "bonferroni")
+pairwise.wilcox.test(ispitanici$hardfactor, ispitanici$polje, p.adjust.method = "bonferroni")
+
+kruskal.test(f1 ~ polje, data = ispitanici)
+kruskal.test(f2 ~ polje, data = ispitanici)
+kruskal.test(hardfactor ~ polje, data = ispitanici)
+
+# Ne može jer nisu normalno distribuirani
+t.test(ispitanici$f1 ~ ispitanici$stem_flag)
+t.test(ispitanici$f2 ~ ispitanici$stem_flag)
+
+# Ovo ne funkcionira jer ima previše NA 
+table_factors <- table(ispitanici$polje, ispitanici$hardfactor)
+chisq.test(table_factors)
+
+
+names(ispitanici) <- c("starost", "spol", "razina_studija", "sveucilista", "podrucje_studiranja", "polje", "hardfactor", "f1", "f2")
+
+
+
+kruskal.test(hardfactor ~ starost, data = ispitanici)
+kruskal.test(f1 ~ starost, data = ispitanici)
+kruskal.test(f2 ~ starost, data = ispitanici)
+
+kruskal.test(hardfactor ~ spol, data = ispitanici)
+kruskal.test(f1 ~ spol, data = ispitanici)
+kruskal.test(f2 ~ spol, data = ispitanici)
+```
+
+```{r}
+
+ispitanici
+
+respondent_summary <- as.data.frame(table(ispitanici$hardfactor, ispitanici$starost))
+colnames(respondent_summary) <- c("Faktor", "Dobna_skupina", "Broj_ispitanika")
+
+print(respondent_summary)
+
+library(knitr)
+kable(respondent_summary, caption = "Broj ispitanika po faktorima i dobnim skupinama")
+
+library(ggplot2)
+
+plot <- ggplot(respondent_summary, aes(x = Faktor, y = Broj_ispitanika, fill = Dobna_skupina)) +
+  geom_bar(stat = "identity", position = "dodge") +  
+  theme_minimal() +
+  labs(title = "Broj ispitanika po faktorima i dobnim skupinama", 
+       x = "Faktor", y = "Broj ispitanika") +
+  scale_fill_brewer(palette = "Set2")
+
+ggsave("graf1_300dpi.png", plot = plot, dpi = 300, width = 8, height = 6)
+
+```
+
+```{r}
+
+library(ggplot2)
+
+ispitanici
+
+respondent_summary <- as.data.frame(table(ispitanici$hardfactor, ispitanici$spol))
+colnames(respondent_summary) <- c("Faktor", "Spolni_identitet", "Broj_ispitanika")
+
+print(respondent_summary)
+
+library(knitr)
+kable(respondent_summary, caption = "Broj ispitanika po faktorima i spolnom identitetu")
+
+library(ggplot2)
+
+plot <- ggplot(respondent_summary, aes(x = Faktor, y = Broj_ispitanika, fill = Spolni_identitet)) +
+  geom_bar(stat = "identity", position = "dodge") +  
+  theme_minimal() +
+  labs(title = "Broj ispitanika po faktorima i spolnom identitetu", 
+       x = "Faktor", y = "Broj ispitanika") +
+  scale_fill_brewer(palette = "Set2")
+
+ggsave("graf2_300dpi.png", plot = plot, dpi = 300, width = 8, height = 6)
+```
+
+```{r}
+
+q_full_2fact$zsc
+
+
+library(dplyr)
+
+top_statements_table <- data.frame(Faktor = character(), Najznacajnije_izjave = character())
+
+statements <- c("Studenti su ti koji bi trebali imati potpuno vlasništvo nad podatcima prikupljenima putem analitike učenja.", 
+                "Studenti bi trebali imati pravo zatražiti brisanje svojih osobnih podataka nakon određenog vremena.", 
+                "Studentima treba omogućiti uvid, izmjenu ili brisanje podataka prikupljenih o njima u obrazovne svrhe.", 
+                "Studenti bi trebali imati pravo povući pristanak za korištenje svojih podataka u bilo kojem trenutku tijekom obrazovnog procesa.", 
+                "Studenti bi trebali imati pravo isključiti se iz procesa prikupljanja podataka za potrebe analitike učenja.",
+                "Anonimizacija podataka iz analitike učenja važnija je od njihove korisnosti za personalizirane intervencije.",
+                "Privatnost studenata mora biti zaštićena u svim praksama analitike učenja.",
+                "Institucije ne bi trebale dijeliti podatke iz analitike učenja s trećim strankama bez obzira na to koliko to bilo povoljno za napredak studenta.",
+                "Podatci korišteni u analitici učenja trebaju biti anonimizirani kad god je to moguće kako bi se smanjili rizici za privatnost studenata.",
+                "Neetično je prikupljati podatke o političkim opredjeljenjima, vjerskim uvjerenjima ili društvenim aktivnostima studenata u svrhe analitike učenja bez obzira na to koliko bi ti podatci pripomogli u napretku studenta.",
+                "Obrazovne bi institucije trebale biti potpuno transparentne o prikupljanju i korištenju podataka iz analitike učenja.",
+                "Studenti trebaju biti potpuno svjesni u kojoj mjeri njihove informacije prikupljaju i analiziraju obrazovne institucije.",
+                "Analitika učenja mora osigurati transparentnost prakse podataka, uključujući koje informacije se prikupljaju i kako se koriste.",
+                "Informirani je pristanak ključan za etičku primjenu analitike učenja, a studenti trebaju eksplicitno pristati na prikupljanje i korištenje svojih podataka.",
+                "Studenti trebaju biti educirani o tome kako se njihovi podatci iz analitike učenja koriste.",
+                "Prediktivna analitika učenja može ograničiti prilike studentima zbog netočnih ili pristranih podataka.",
+                "Korištenje prediktivne analitike ne smije dovesti do toga da se zaključci donose bez razmatranja individualnog konteksta studenta.",
+                "Analitika učenja može dovesti do nepravednog profiliranja studenata na temelju njihovih podataka.",
+                "Prediktivni modeli koji se koriste u analitici učenja moraju se redovito validirati kako bi se osiguralo da nisu pristrani.",
+                "Korištenje prediktivnih modela u obrazovanju uvijek bi trebalo biti transparentno za studente i nastavno osoblje.",
+                "Važno je uspostaviti ravnotežu između otvorenosti podataka i zaštite privatnosti u analitici učenja.",
+                "Obrazovne institucije trebaju održati ravnotežu između inovacija u obrazovnoj tehnologiji i zaštite prava studenata.",
+                "Analitika učenja se ne bi smjela koristiti za nadzor ili praćenje studenata izvan njihovih akademskih aktivnosti.",
+                "Prednosti analitike učenja ne bi trebale opravdavati ugrožavanje prava studenata na privatnost.",
+                "Obrazovne bi institucije trebale izbjegavati korištenje analitike učenja za profiliranje studenata na način koji može dovesti do pristranih ishoda.")
+
+factors <- colnames(q_full_2fact$zsc)
+
+# Iteracija kroz faktore (kolone u zsc)
+top_statements_table <- data.frame(Faktor = character(), 
+                                   Najznacajnije_izjave = character(),
+                                   Zscore = numeric())
+
+
+# Kreiraj tablicu za statističke sažetke
+factor_summary_table <- data.frame(Faktor = character(), 
+                                   Srednja_vrijednost = numeric(), 
+                                   Std_devijacija = numeric())
+
+for (faktor in factors) {
+  # Izvlačenje z-score vrijednosti za trenutni faktor
+  zsc_values <- q_full_2fact$zsc[,faktor]
+  
+  # Izračun srednje vrijednosti i standardne devijacije
+  mean_value <- mean(zsc_values)
+  sd_value <- sd(zsc_values)
+  
+  # Dodavanje rezultata u tablicu
+  factor_summary_table <- rbind(factor_summary_table, 
+                                data.frame(Faktor = faktor, 
+                                           Srednja_vrijednost = mean_value, 
+                                           Std_devijacija = sd_value))
+}
+
+# Prikazivanje tablice s statističkim sažecima
+print(factor_summary_table)
+
+
+
+# Izračun Pearsonove korelacije između tvrdnji i faktora
+correlations <- cor(q_full_2fact$zsc, use = "pairwise.complete.obs")
+
+# Prikazivanje korelacijskih vrijednosti
+print(correlations)
+
+
+# Pristup podacima za prvi faktor (prva kolona)
+faktor1_data <- q_full_2fact$zsc[, 1]  # Sve tvrdnje za prvi faktor
+
+# Pristup podacima za drugi faktor (druga kolona)
+faktor2_data <- q_full_2fact$zsc[, 2]  # Sve tvrdnje za drugi faktor
+
+# Pristup podacima za faktor sa specifičnim imenom (ako su faktori imenovani)
+faktor1_data <- q_full_2fact$zsc[, "zsc_f1"]  # Ako je Faktor1 ime kolone
+faktor2_data <- q_full_2fact$zsc[, "zsc_f2"]  # Ako je Faktor2 ime kolone
+
+# Kreiranje tablice s z-score-ovima za oba faktora
+results_table <- data.frame(
+  Statement = statements,  # Pretpostavljamo da redci sadrže tvrdnje
+  Faktor1 = faktor1_data,
+  Faktor2 = faktor2_data
+)
+
+# Ispis tablice
+print(results_table)
+
+
+# Sortiranje za Faktor 1 (najveći z-score)
+top_faktor1 <- results_table[order(-results_table$Faktor1), ]
+bottom_faktor1 <- results_table[order(results_table$Faktor1), ]
+
+# Prikazati prve 5 tvrdnji s najvećim i najmanjim z-score
+top_faktor1[1:5, ]
+bottom_faktor1[1:5, ]
+# Sortiranje za Faktor 2 (najveći z-score)
+top_faktor2 <- results_table[order(-results_table$Faktor2), ]
+bottom_faktor2 <- results_table[order(results_table$Faktor2), ]
+
+# Prikazati prve 5 tvrdnji s najvećim i najmanjim z-score
+top_faktor2[1:5, ]
+bottom_faktor2[1:5, ]
+
+
+```
+
