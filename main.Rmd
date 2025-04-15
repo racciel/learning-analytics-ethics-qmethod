@@ -1,3 +1,10 @@
+---
+title: "MiPro paper data analysis"
+author: "racciel"
+date: "March 1, 2025"
+output: rmarkdown::github_document
+---
+
 INSTALACIJE PAKETA
 ```{r}
 # !!! INSTALACIJE PAKETA !!!
