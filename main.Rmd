@@ -2,7 +2,9 @@
 title: "MiPro paper data analysis"
 author: "racciel"
 date: "March 1, 2025"
-output: rmarkdown::github_document
+output: 
+  html_document:
+    keep_md: true
 ---
 
 INSTALACIJE PAKETA
